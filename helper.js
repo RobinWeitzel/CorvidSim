@@ -1,5 +1,5 @@
 
-const pacing = 2.5;
+const pacing = 2;
 const size = 22.5;
 
 const houses = [];
@@ -20,14 +20,14 @@ class Building {
   draw() {
     stroke(255);
     fill(255);
-    rect(this.x, this.y, this.width, this.height);
+    rect(this.x * size, this.y * size, this.width * size, this.height * size);
     stroke(0);
     fill(this.color);
-    rect(this.x + 2, this.y + 2, this.width - 4, this.height - 4);
+    rect(this.x * size + pacing, this.y * size + pacing, this.width * size - pacing*2, this.height * size - pacing*2);
   }
 
   checkCollision() {
-    if(this.x > mouseX/scaleFactor || this.y > mouseY/scaleFactor || this.x + this.width < mouseX/scaleFactor || this.y + this.height < mouseY/scaleFactor) {
+    if(this.x * size > mouseX/scaleFactor || this.y * size > mouseY/scaleFactor || this.x * size + this.width * size < mouseX/scaleFactor || this.y * size + this.height * size < mouseY/scaleFactor) {
       return false;
     }
 
@@ -38,8 +38,15 @@ class Building {
     return `{"name": "${this.constructor.name}", "x": ${this.x}, "y": ${this.y}, "width": ${this.width}, "height": ${this.height}}`;
   }
 
-  static fromString(string) {
+  static fromString(string, scaled) {
     const obj = JSON.parse(string);
+
+    if(!scaled) {
+      obj.x = obj.x / 22.5;
+      obj.y = obj.y / 22.5;
+      obj.width = obj.width / 22.5;
+      obj.height = obj.height / 22.5;
+    }
 
     if(obj.name === "Home1") {
       return new Home1(obj.x, obj.y);
@@ -93,32 +100,32 @@ class Building {
 
 class Home1 extends Building {
   constructor(x, y) {
-    super(x, y, size, size, "rgba(0, 204, 0, 0.25)");
+    super(x, y, 1, 1, "rgba(0, 204, 0, 0.25)");
   }
 }
 
 class Home2H extends Building {
   constructor(x, y) {
-    super(x, y, 2*size, size, "rgba(0, 204, 0, 0.25)");
+    super(x, y, 2, 1, "rgba(0, 204, 0, 0.25)");
   }
 }
 
 class Home2V extends Building {
   constructor(x, y) {
-    super(x, y, size, 2*size, "rgba(0, 204, 0, 0.25)");
+    super(x, y, 1, 2, "rgba(0, 204, 0, 0.25)");
   }
 }
 
 class Home4 extends Building {
   constructor(x, y) {
-    super(x, y, 2*size, 2*size, "rgba(0, 204, 0, 0.25)");
+    super(x, y, 2, 2, "rgba(0, 204, 0, 0.25)");
   }
 }
 
 
 class Home5 extends Building {
   constructor(x, y) {
-    super(x, y, 3*size, 2*size, "rgba(0, 204, 0, 0.25)");
+    super(x, y, 3, 2, "rgba(0, 204, 0, 0.25)");
   }
 }
 
@@ -166,9 +173,9 @@ class Street extends Building {
   draw() {
     noStroke();
     fill(255);
-    rect(this.x, this.y, this.width, this.height);
+    rect(this.x * size, this.y * size, this.width * size, this.height * size);
     fill(this.color);
-    rect(this.x, this.y, this.width, this.height);
+    rect(this.x * size, this.y * size, this.width * size, this.height * size);
   }
 }
 
@@ -179,12 +186,13 @@ function setup() {
   scaleFactor = min(windowWidth / 1000,  windowHeight / 562.5);
 
   let housesRaw = localStorage.getItem("houses");
+  let scaled = localStorage.getItem("scaled");
 
   if(housesRaw) {
     housesRaw = JSON.parse(housesRaw);
 
     for(const hr of housesRaw) {
-      houses.push(Building.fromString(hr));
+      houses.push(Building.fromString(hr, scaled));
     }
   }
 }
@@ -195,6 +203,7 @@ function draw() {
   scale(scaleFactor);
 
   stroke(0);
+  strokeWeight(1);
 
   // Vertical
   for(let i = 0; i*size <= 1000; i++) {
@@ -225,6 +234,7 @@ function draw() {
     }
   }
 
+  strokeWeight(0.5);
   for(const house of houses) {
     house.draw();
   }
@@ -238,6 +248,7 @@ function mousePressed(e) {
     for(let i = 0; i < houses.length; i++) {
       if(houses[i].checkCollision()) {
         houses.splice(i, 1);
+        localStorage.setItem("scaled", "true");
         localStorage.setItem("houses", JSON.stringify(houses.map(h => h.toString())));
         break;
       }
@@ -252,61 +263,62 @@ function mouseDragged() {
 function mouseReleased() {
   if(start && end) {
       const width = max(start[0], end[0]) - min(start[0], end[0]) + 1;
-      const height = max(start[1], end[1]) - min(start[1], end[1]) + 1;
+      const height = max(start[1], end[1])- min(start[1], end[1])+ 1;
 
       if(type === "home") {
         if(width === 1 && height === 1) {
-          houses.push(new Home1(min(start[0], end[0]) * size, min(start[1], end[1]) * size));
+          houses.push(new Home1(min(start[0], end[0]), min(start[1], end[1])));
         }
 
         if(width === 2 && height === 1) {
-          houses.push(new Home2H(min(start[0], end[0]) * size, min(start[1], end[1]) * size));
+          houses.push(new Home2H(min(start[0], end[0]), min(start[1], end[1])));
         }
 
         if(width === 1 && height === 2) {
-          houses.push(new Home2V(min(start[0], end[0]) * size, min(start[1], end[1]) * size));
+          houses.push(new Home2V(min(start[0], end[0]), min(start[1], end[1])));
         }
 
         if(width === 2 && height === 2) {
-          houses.push(new Home4(min(start[0], end[0]) * size, min(start[1], end[1]) * size));
+          houses.push(new Home4(min(start[0], end[0]), min(start[1], end[1])));
         }
 
         if(width === 3 && height === 2) {
-          houses.push(new Home5(min(start[0], end[0]) * size, min(start[1], end[1]) * size));
+          houses.push(new Home5(min(start[0], end[0]), min(start[1], end[1])));
         }
       }
 
       if(type === "non-essential") {
-        houses.push(new BusinessNE(min(start[0], end[0]) * size, min(start[1], end[1]) * size, width * size, height * size));
+        houses.push(new BusinessNE(min(start[0], end[0]), min(start[1], end[1]), width, height));
       }
 
       if(type === "essential") {
-        houses.push(new BusinessE(min(start[0], end[0]) * size, min(start[1], end[1]) * size, width * size, height * size));
+        houses.push(new BusinessE(min(start[0], end[0]), min(start[1], end[1]), width, height));
       }
 
       if(type === "work") {
-        houses.push(new Work(min(start[0], end[0]) * size, min(start[1], end[1]) * size, width * size, height * size));
+        houses.push(new Work(min(start[0], end[0]), min(start[1], end[1]), width, height));
       }
 
       if(type === "school") {
-        houses.push(new School(min(start[0], end[0]) * size, min(start[1], end[1]) * size, width * size, height * size));
+        houses.push(new School(min(start[0], end[0]), min(start[1], end[1]), width, height));
       }
 
       if(type === "freetime") {
-        houses.push(new Freetime(min(start[0], end[0]) * size, min(start[1], end[1]) * size, width * size, height * size));
+        houses.push(new Freetime(min(start[0], end[0]), min(start[1], end[1]), width, height));
       }
 
       if(type === "hospital") {
-        houses.push(new Hospital(min(start[0], end[0]) * size, min(start[1], end[1]) * size, width * size, height * size));
+        houses.push(new Hospital(min(start[0], end[0]), min(start[1], end[1]), width, height));
       }
 
       if(type === "street") {
-        houses.push(new Street(min(start[0], end[0]) * size, min(start[1], end[1]) * size, width * size, height * size));
+        houses.push(new Street(min(start[0], end[0]), min(start[1], end[1]), width, height));
       }
 
       start = undefined;
       end = undefined;
 
+      localStorage.setItem("scaled", "true");
       localStorage.setItem("houses", JSON.stringify(houses.map(h => h.toString())));
     }
 }
