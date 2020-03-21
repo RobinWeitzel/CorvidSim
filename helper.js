@@ -18,11 +18,12 @@ class Building {
   }
 
   draw() {
-    stroke(0);
+    stroke(255);
     fill(255);
     rect(this.x, this.y, this.width, this.height);
+    stroke(0);
     fill(this.color);
-    rect(this.x, this.y, this.width, this.height);
+    rect(this.x + 2, this.y + 2, this.width - 4, this.height - 4);
   }
 
   checkCollision() {
