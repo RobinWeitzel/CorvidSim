@@ -1,6 +1,7 @@
 
 const pacing = 2;
 const size = 22.5;
+let showGrid = true;
 
 const houses = [];
 
@@ -205,14 +206,16 @@ function draw() {
   stroke(0);
   strokeWeight(1);
 
-  // Vertical
-  for(let i = 0; i*size <= 1000; i++) {
-    line(i*size, 0, i*size, 562.5);
-  }
+  if(showGrid) {
+    // Vertical
+    for(let i = 0; i*size <= 1000; i++) {
+      line(i*size, 0, i*size, 562.5);
+    }
 
-  // Horizontal
-  for(let i = 0; i*size <= 562.5; i++) {
-    line(0, i*size, 1000, i*size);
+    // Horizontal
+    for(let i = 0; i*size <= 562.5; i++) {
+      line(0, i*size, 1000, i*size);
+    }
   }
 
   if(start && end) {
