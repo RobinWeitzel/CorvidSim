@@ -4,6 +4,7 @@ const size = 22.5;
 let showGrid = true;
 
 const houses = [];
+const agents = [];
 
 let start = undefined;
 let end = undefined;
@@ -16,6 +17,7 @@ class Building {
     this.width = width;
     this.height = height;
     this.color = color;
+    this.inhabitants = [];
   }
 
   draw() {
@@ -97,6 +99,60 @@ class Building {
       return new Street(obj.x, obj.y, obj.width, obj.height);
     }
   }
+
+  getRandCoords(agent) {
+    const possibleCoords = new Map();
+
+    for(let i = this.x + 0.25; i <= this.x + this.width - 0.25; i += 0.25) {
+      for(let j = this.y + 0.25; j <= this.y + this.height - 0.25; j += 0.25) {
+        possibleCoords.set(`(${i},${j})`, [i, j]);
+      }
+    }
+
+    for(const inhabitant of this.inhabitants) {
+      if(inhabitant !== agent) {
+        for(let i = inhabitant.x - 0.5; i <= inhabitant.x + 0.5; i += 0.25) {
+          for(let j = inhabitant.y - 0.5; j <= inhabitant.y + 0.5; j += 0.25) {
+            if(possibleCoords.length > 1) {
+              possibleCoords.delete(`(${i},${j})`);
+            }
+          } 
+        }
+      }
+    }
+
+    return random(Array.from(possibleCoords.values()));
+  }
+
+  getRandomMovement(agent) {
+    const possibleCoords = new Map();
+    
+    for(let i = agent.x - 0.25; i <= agent.x + 0.25; i += 0.25) {
+      for(let j = agent.y - 0.25; j <= agent.y + 0.25; j += 0.25) {
+        possibleCoords.set(`(${i},${j})`, [i, j]);
+      }
+    }
+
+    for(const values of Array.from(possibleCoords.values())) {
+      if(values[0] < this.x + 0.25 || values[0] > this.x + this.width - 0.25 || values[1] < this.y + 0.25 || values[1] > this.y + this.height - 0.25) {
+        possibleCoords.delete(`(${values[0]},${values[1]})`);
+      }
+    }
+
+    for(const inhabitant of this.inhabitants) {
+      if(inhabitant !== agent) {
+        for(let i = inhabitant.x - 0.75; i < inhabitant.x + 0.75; i += 0.25) {
+          for(let j = inhabitant.y - 0.75; j < inhabitant.y + 0.75; j += 0.25) {
+            if(possibleCoords.length > 1) {
+              possibleCoords.delete(`(${i},${j})`);
+            }
+          }
+        }
+      }
+    }
+
+    return random(Array.from(possibleCoords.values()));
+  }
 }
 
 class Home1 extends Building {
@@ -169,6 +225,23 @@ class Freetime extends Building {
 class Street extends Building {
   constructor(x, y, width, height) {
     super(x, y, width, height, "rgba(127, 127, 127, 0.25)");
+
+    this.line = [];
+    this.insersectPoints = [];
+
+    if(width > height) {
+      this.line.push({x: x, y: y+height/2});
+      this.line.push({x: x+width, y: y+height/2});
+      
+      this.insersectPoints.push({x: x+1, y: y+height/2});
+      this.insersectPoints.push({x: x+width-1, y: y+height/2});
+    } else {
+      this.line.push({x: x + width/2, y: y});
+      this.line.push({x: x+width/2, y: y+height});
+
+      this.insersectPoints.push({x: x + width/2, y: y+1});
+      this.insersectPoints.push({x: x+width/2, y: y+height-1});
+    }
   }
 
   draw() {
@@ -177,6 +250,41 @@ class Street extends Building {
     rect(this.x * size, this.y * size, this.width * size, this.height * size);
     fill(this.color);
     rect(this.x * size, this.y * size, this.width * size, this.height * size);
+
+    stroke("red");
+    line(this.line[0].x * size, this.line[0].y * size, this.line[1].x * size, this.line[1].y * size);
+  }
+}
+
+class Agent {
+  constructor(startHouse, illnessState) {
+    this.enterHouse(startHouse);
+    [this.x, this.y] = startHouse.getRandCoords(this);
+    this.illnessState = illnessState;
+  }
+
+  act() {
+    [this.x, this.y] = this.house.getRandomMovement(this);
+  }
+
+  draw() {
+    stroke(0);
+    strokeWeight(0.5);
+    if(this.illnessState === "sick") {
+      fill("rgb(255, 0, 0)");
+    } else if(this.illnessState === "healthy") {
+      fill("rgb(255, 204, 153)");
+    } else {
+      fill("rgb(153, 0, 255)");
+    }
+
+
+    ellipse(this.x * size, this.y * size, size/4);
+  }
+
+  enterHouse(house) {
+    this.house = house;
+    house.inhabitants.push(this);
   }
 }
 
@@ -196,7 +304,42 @@ function setup() {
       houses.push(Building.fromString(hr, scaled));
     }
   }
+
+  let count = 6;
+  const homes = houses.filter(h => h.constructor.name.startsWith("Home"));
+
+  for(const home of shuffle(homes)) {
+    if(home.constructor.name === "Home1") {
+      agents.push(new Agent(home, "healthy"));
+    } else if(home.constructor.name.startsWith("Home2")) {
+      agents.push(new Agent(home, "healthy"));
+      agents.push(new Agent(home, "healthy"));
+    } else if(home.constructor.name === "Home4") {
+      if(count <= 0) {
+        for(let i = 0; i < 4; i++) {
+          agents.push(new Agent(home, "healthy"));
+        }
+      } else {
+        for(let i = 0; i < 3; i++) {
+          agents.push(new Agent(home, "healthy"));
+        }
+      }
+      count -= 1;
+    } else if(home.constructor.name === "Home4") {
+      agents.push(new Agent(home, "healthy"));
+      agents.push(new Agent(home, "healthy"));
+      agents.push(new Agent(home, "healthy"));
+      agents.push(new Agent(home, "healthy"));
+    } else {
+      agents.push(new Agent(home, "healthy"));
+      agents.push(new Agent(home, "healthy"));
+      agents.push(new Agent(home, "healthy"));
+      agents.push(new Agent(home, "healthy"));
+      agents.push(new Agent(home, "healthy"));
+    }
+  }
 }
+let time = 0;
 
 function draw() {
   background(255);  
@@ -241,6 +384,48 @@ function draw() {
   for(const house of houses) {
     house.draw();
   }
+
+  // draw nodes
+  let streets = houses.filter(h => h.constructor.name === "Street");
+  let intersections = [];
+
+  for(let a of streets) {
+    for(let b of streets) {
+      if(a !== b) {
+        for(const point of b.insersectPoints) {
+          // Check for intersect
+          const dx1 = abs(point.x - a.line[0].x);
+          const dy1 = abs(point.y - a.line[0].y);
+
+          const dx2 = abs(point.x - a.line[1].x);
+          const dy2 = abs(point.y - a.line[1].y);
+
+          const dx = abs(a.line[0].x - a.line[1].x);
+          const dy = abs(a.line[0].y - a.line[1].y);
+
+          if(dx1 + dx2 - dx === 0 && dy1 + dy2 - dy === 0) {
+            intersections.push(point);
+          }
+        }
+      }
+    }
+  }
+
+  noStroke();
+  fill("green");
+
+  for(const intersection of intersections) {
+    ellipse(intersection.x*size, intersection.y*size, 5);
+  }
+
+  for(const agent of agents) {
+    if(time % 15 === 0) {
+      agent.act();
+    }
+    agent.draw();
+  }
+
+  time += 1;
 }
 
 function mousePressed(e) {
